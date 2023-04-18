@@ -1,11 +1,11 @@
 # -- build
-FROM openjdk:8-jdk-slim AS builder
+FROM build-harbor.alauda.cn/devops/builder-java:1.8.0_242-openjdk-4fe788e4 AS builder
 COPY ./ /src/
 WORKDIR /src/
 RUN ./gradlew --info --no-daemon build
 
 # -- run
-FROM alpine:3.10
+FROM build-harbor.alauda.cn/ops/alpine:3.16
 
 # Install java runtime
 RUN apk add --no-cache --update openjdk8-jre && \

@@ -1,0 +1,90 @@
+apiVersion: builds.katanomi.dev/v1alpha1
+kind: Build
+spec:
+  workspaces:
+    - description: >
+        This workspace is shared among all the pipeline tasks to read/write
+        common resources
+      name: source
+  tasks:
+    - name: build-proxy-image-amd
+      timeout: 60m
+      retries: 0
+      taskRef:
+        kind: ClusterTask
+        name: build-image-buildkit
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: container-images
+          value:
+            - build-harbor.alauda.cn/devops/travelaudience-docker-nexus-proxy
+        - name: labels
+          value:
+            - branch=$(build.git.branch.name)
+            - commit=$(build.git.lastCommit.id)
+            - commit_id=$(build.git.lastCommit.id)
+
+    - name: build-proxy-image-arm
+      timeout: 60m
+      retries: 0
+      taskRef:
+        kind: ClusterTask
+        name: build-image-buildkit
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: container-images
+          value:
+            - build-harbor.alauda.cn/devops/travelaudience-docker-nexus-proxy
+        - name: labels
+          value:
+            - branch=$(build.git.branch.name)
+            - commit=$(build.git.lastCommit.id)
+            - commit_id=$(build.git.lastCommit.id)
+
+    - name: merge-proxy-image
+      runAfter:
+        - build-proxy-image-arm
+        - build-proxy-image-amd
+      timeout: 30m
+      retries: 0
+      taskRef:
+        kind: ClusterTask
+        name: merge-image-buildkit
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: container-images
+          value:
+            - build-harbor.alauda.cn/devops/travelaudience-docker-nexus-proxy:2.7.0-$(build.git.lastCommit.shortID)
+        - name: source-image-digests
+          value:
+            - $(tasks.build-proxy-image-amd.results.ociContainerImageBuild-url)
+            - $(tasks.build-proxy-image-arm.results.ociContainerImageBuild-url)
+  git:
+    options:
+      depth: 1
+      timeout: 10m
+      retries: 0
+      resources:
+        limits:
+          cpu: 200m
+          memory: 200Mi
+        requests:
+          cpu: 200m
+          memory: 200Mi
+  runTemplate:
+    spec:
+      taskRunSpecs:
+        - pipelineTaskName: build-proxy-image-arm
+          taskPodTemplate:
+            nodeSelector:
+              kubernetes.io/arch: arm64 #指定 node 配置的 selector 标签
+            Tolerations: # 可选操作：如果 node 上设置了污点可以添加相关的配置
+              - key: "build-arm"
+                operator: "Exists"
+                effect: "NoSchedule"
