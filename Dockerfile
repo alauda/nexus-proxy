@@ -5,7 +5,7 @@ WORKDIR /src/
 RUN ./gradlew --info --no-daemon build
 
 # -- run
-FROM build-harbor.alauda.cn/ops/alpine:3.16
+FROM build-harbor.alauda.cn/ops/alpine:3.17
 
 # Install java runtime
 RUN apk add --no-cache --update openjdk8-jre && \
