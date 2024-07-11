@@ -72,6 +72,32 @@ spec:
           value:
             - $(tasks.build-proxy-image-amd.results.ociContainerImageBuild-url)
             - $(tasks.build-proxy-image-arm.results.ociContainerImageBuild-url)
+    - name: image-scan
+      timeout: 60m
+      retries: 0
+      taskRef:
+        resolver: katanomi.hub
+        params:
+          - name: kind
+            value: task
+          - name: name
+            value: trivy-image-scan
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: targets
+          value:
+            - $(tasks.merge-proxy-image.results.ociContainerImageBuild-url)
+        - name: quality-gate-rules
+          value:
+            - severity=High
+        - name: scan-flags
+          value:
+            - vulnerability.ignore-unfixed=true
+            - vulnerability.type[0]=os
+            - db.skip-update=false
+            - db.repository=build-harbor.alauda.cn/ops/aquasecurity/trivy-db
   git:
     options:
       depth: 1
